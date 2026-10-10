@@ -4,7 +4,7 @@ FastAPI and MongoDB backend for the HROne Employee Attendance & Analytics System
 
 ## Requirements
 - Python 3.11+
-- MongoDB 6.0+ (MongoDB 7.0 supported)
+- MongoDB 6.0+
 
 ## Setup & Running
 

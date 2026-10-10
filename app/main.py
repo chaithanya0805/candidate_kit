@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from enum import Enum
+import json
 import os
 import re
 from typing import Any, Dict, List, Optional
@@ -262,15 +263,7 @@ def serialize_attendance_doc(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def serialize_bson_for_json(obj: Any) -> Any:
-    if isinstance(obj, dict):
-        return {k: serialize_bson_for_json(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [serialize_bson_for_json(item) for item in obj]
-    elif isinstance(obj, datetime):
-        return obj.isoformat()
-    elif hasattr(obj, "__str__") and type(obj).__name__ in ("ObjectId", "Decimal128"):
-        return str(obj)
-    return obj
+    return json.loads(json_util.dumps(obj))
 
 
 # --------------------------------------------------------------------------- #
@@ -1353,13 +1346,14 @@ def explain_endpoint(
             q["status"] = status_filter.value
 
         skip = (page - 1) * page_size
-        explain_res = (
-            db.attendance_logs.find(q)
-            .sort([("date", DESCENDING), ("emp_code", ASCENDING)])
-            .skip(skip)
-            .limit(page_size)
-            .explain("executionStats")
-        )
+        find_cmd = {
+            "find": "attendance_logs",
+            "filter": q,
+            "sort": {"date": -1, "emp_code": 1},
+            "skip": skip,
+            "limit": page_size,
+        }
+        explain_res = db.command("explain", find_cmd, verbosity="executionStats")
         return {
             "endpoint": endpoint,
             "collection": "attendance_logs",
@@ -1405,7 +1399,7 @@ def explain_endpoint(
                                         },
                                     ]
                                 },
-                                {"$cond": [{"$eq": ["$half_day", true]}, 0.5, 1.0]},
+                                {"$cond": [{"$eq": ["$half_day", True]}, 0.5, 1.0]},
                                 0.0,
                             ]
                         }
